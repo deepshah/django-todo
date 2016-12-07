@@ -1,0 +1,36 @@
+{% extends 'tasks/base.html' %}
+{% block content %}
+
+    <a href="/tasks/">View all tasks</a><br>
+    <a href="/tasks/pending">View pending tasks</a><br>
+
+    <form method="POST" action="{% url 'task' pk=task_id %}">
+    {% csrf_token %}
+    <table>
+    <tr>
+        <td>{{ form.title.label_tag }}</td>
+        <td>{{ form.title }}</td>
+    </tr>
+    <tr>
+        <td>{{ form.description.label_tag }}</td>
+        <td>{{ form.description }}</td>
+    </tr>
+    <tr>
+        <td>{{ form.deadline.label_tag }}</td>
+        <td>{{ form.deadline }}</td>
+    </tr>
+    <tr>
+        <td>{{ form.status.label_tag }}</td>
+        <td>{{ form.status }}</td>
+    </tr>
+    <tr>
+        <td>{{ form.priority.label_tag }}</td>
+        <td>{{ form.priority }}</td>
+    </tr>
+    </table>
+
+    <input type="submit" value="Update" />
+    </form>
+
+
+{% endblock %}

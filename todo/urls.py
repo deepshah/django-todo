@@ -1,5 +1,11 @@
 """todo URL Configuration
 
+# router = routers.DefaultRouter()
+# router.register(r'tasks', views.TaskViewSet)
+
+# router = routers.DefaultRouter()
+# router.register(r'tasks', views.TaskViewSet)
+
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.10/topics/http/urls/
 Examples:
@@ -22,12 +28,8 @@ from tasks import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
-]
-
-router = routers.DefaultRouter()
-router.register(r'tasks', views.TaskViewSet)
-
-urlpatterns += [
-    url(r'^', include(router.urls)),
-    url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
+    url('^', include('django.contrib.auth.urls')),
+    url(r'^tasks/$', views.task_list, name='task_list'),
+    url(r'^tasks/(?P<pk>[0-9]+)$', views.task, name='task'),
+    url(r'^tasks/pending/$', views.pending, name='pending'),
 ]

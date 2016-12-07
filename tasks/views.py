@@ -1,52 +1,56 @@
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.core.exceptions import SuspiciousOperation
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 
-from rest_framework import status, viewsets
-from rest_framework.decorators import detail_route, list_route
-from rest_framework.response import Response
-
 from tasks.serializers import TaskSerializer
-from tasks.models import Task
+from .models import Task
+
+from .forms import TaskForm
 
 
-class TaskViewSet(viewsets.ModelViewSet):
-    queryset = Task.objects.all()
-    serializer_class = TaskSerializer
-
-
-    def list(self, request):
-        query = dict(self.request.GET.items())
-        tasks = Task.objects.filter(user=self.request.user, **query)
-        serializer = self.get_serializer(tasks, many=True)
-        return Response(serializer.data)
-
-    def retrieve(self, request, pk=None):
-        try:
-            tasks = Task.objects.get(pk=pk, user=self.request.user)
-        except Task.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        serializer = self.get_serializer(tasks)
-        return Response(serializer.data)
-
-    def create(self, request):
-        serializer = TaskSerializer(data=request.data)
+def task_list(request):
+    if request.method == 'POST':
+        serializer = TaskSerializer(data=request.POST)
         if serializer.is_valid():
-            serializer.save(user=self.request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            task = Task.objects.create(user=request.user, **serializer.data)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            raise SuspiciousOperation('Invalid Data')
 
-    def partial_update(self, request, pk=None):
+    form = TaskForm()
+    query = dict(request.GET.items())
+    tasks = Task.objects.filter(user=request.user, **query)
+    serializer = TaskSerializer(tasks, many=True)
+    context = {'tasks_list': serializer.data, 'form': form}
+    return render(request, 'tasks/task_list.html', context)
+
+
+def task(request, pk):
+    if request.method == 'GET':
         try:
-            tasks = Task.objects.get(pk=pk, user=self.request.user)
+            task = Task.objects.get(pk=pk, user=request.user)
         except Task.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)        
-        return super(viewsets.ModelViewSet, self).partial_update(request, pk)
+            raise Http404()
+        serializer = TaskSerializer(task)
+        form = TaskForm(request.POST or None, initial={'title':task.title, 'description':task.description, 'deadline':task.deadline, 'status':task.status, 'priority':task.priority})
+        return render(request, 'tasks/task.html', {'form': form, 'task_id': task.id,})
 
 
-    @list_route()
-    def pending(self, request):
-        query = dict(self.request.GET.items())
-        pending = Task.objects.filter(user=self.request.user, status=Task.PENDING,**query)
-        serializer = self.get_serializer(pending, many=True)
-        return Response(serializer.data)
+    if request.method == 'POST':
+        try:
+            task = Task.objects.filter(pk=pk, user=request.user)
+        except Task.DoesNotExist:
+            raise Http404()
+        serializer = TaskSerializer(data=request.POST)
+        if serializer.is_valid():
+            task.update(**serializer.data)
+        form = TaskForm(request.POST or None)#, initial={'title':task.title, 'description':task.description, 'deadline':task.deadline, 'status':task.status, 'priority':task.priority})
+        return render(request, 'tasks/task.html', {'form': form, 'task_id': pk,})
+
+
+def pending(request):
+    form = TaskForm()
+    query = dict(request.GET.items())
+    pending = Task.objects.filter(user=request.user, status=Task.PENDING,**query)
+    serializer = TaskSerializer(pending, many=True)
+    context = {'tasks_list': serializer.data, 'form': form}
+    return render(request, 'tasks/task_list.html', context)
